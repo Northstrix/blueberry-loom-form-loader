@@ -1,75 +1,39 @@
-# Nuxt Minimal Starter
+# Blueberry Loom Form Loader
+Statically-compiled form loader for Blueberry Loom made using Nuxt3/Vue3.
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+The main app that uses the loader is hosted at https://blueberry-loom.netlify.app/
 
-## Setup
+## How to run
 
-Make sure to install dependencies:
+1. Configure the main app:
 
-```bash
-# npm
-npm install
+    Visit the [https://github.com/Northstrix/blueberry-loom](https://github.com/Northstrix/blueberry-loom) repository and set up the Next.js app
 
-# pnpm
-pnpm install
+2. Clone the repository using the command:
 
-# yarn
-yarn install
+    ```
+    git clone https://github.com/Northstrix/blueberry-loom-form-loader
+    ```
+    
+3. Open the project:
 
-# bun
-bun install
-```
+    - Open the cloned folder in VS Code or any IDE of your choice.
 
-## Development Server
+4. Configure Firebase Access:
 
-Start the development server on `http://localhost:3000`:
+    - Open `plugins/firebase.client.ts` file.
+    - Replace the mock credentials there with the same ones you've used in the [Next.js app](https://github.com/Northstrix/blueberry-loom).
 
-```bash
-# npm
-npm run dev
+5. Install dependencies by running:
 
-# pnpm
-pnpm dev
+    ```
+    npm install
+    ```
 
-# yarn
-yarn dev
+6. Start the development server with:
 
-# bun
-bun run dev
-```
+    ```
+    npm run dev -- --host
+    ```
 
-## Production
-
-Build the application for production:
-
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+7. Repalce the base URL of the [Next.js app](https://github.com/Northstrix/blueberry-loom) within the loader with your own (<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd> -> https://blueberry-loom.netlify.app/)
