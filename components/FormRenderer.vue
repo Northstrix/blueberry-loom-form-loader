@@ -114,50 +114,51 @@
             <label
               v-for="opt in el.options"
               :key="opt.value"
-              :style="getCheckboxLabelStyle(opt.text, el)"
+              :style="getCheckboxLabelStyle(opt.text, el, opt.value)"
               :dir="isRTL(opt.text) ? 'rtl' : 'ltr'"
               class="clickable-label"
               tabindex="0"
               @keydown.enter.prevent.stop="toggleCheckbox(el.key, opt.value, el)"
               @keydown.space.prevent.stop="toggleCheckbox(el.key, opt.value, el)"
+              :aria-disabled="isInactive(el.key, el, opt.value) ? 'true' : 'false'"
             >
               <template v-if="isRTL(opt.text)">
                 <span>{{ opt.text }}</span>
                 <div class="control-wrapper">
                   <CustomCheckbox
-                    :checked="(form[el.key] || []).includes(opt.value)"
+                    :checked="isChecked(el.key, opt.value)"
                     @update:checked="checked => toggleCheckbox(el.key, opt.value, el, checked)"
                     :accentColor="schema.meta.accentColor"
                     :highlightForeground="schema.meta.highlightForeground"
                     :id="`${el.key}-${opt.value}`"
-                    :disabled="isCheckboxDisabled(el.key, el, opt.value)"
-                  />
-                  <span
-                    class="click-overlay"
-                    @click.stop.prevent="toggleCheckbox(el.key, opt.value, el)"
+                    :inactive="isInactive(el.key, el, opt.value)"
                   />
                 </div>
               </template>
               <template v-else>
                 <div class="control-wrapper">
                   <CustomCheckbox
-                    :checked="(form[el.key] || []).includes(opt.value)"
+                    :checked="isChecked(el.key, opt.value)"
                     @update:checked="checked => toggleCheckbox(el.key, opt.value, el, checked)"
                     :accentColor="schema.meta.accentColor"
                     :highlightForeground="schema.meta.highlightForeground"
                     :id="`${el.key}-${opt.value}`"
-                    :disabled="isCheckboxDisabled(el.key, el, opt.value)"
-                  />
-                  <span
-                    class="click-overlay"
-                    @click.stop.prevent="toggleCheckbox(el.key, opt.value, el)"
+                    :inactive="isInactive(el.key, el, opt.value)"
                   />
                 </div>
                 <span>{{ opt.text }}</span>
               </template>
+
+              <!-- Overlay covering entire label -->
+              <span
+                class="click-overlay"
+                :class="{ 'disabled-overlay': isInactive(el.key, el, opt.value) }"
+                @click.stop.prevent="handleOverlayClick(el.key, opt.value, el)"
+              />
             </label>
           </div>
         </div>
+
 
         <!-- Radio buttons -->
         <div
@@ -238,7 +239,7 @@
       <div style="margin-bottom: 0.5rem;">
         By using the Blueberry Loom you're accepting the&nbsp;
         <a
-          href="/terms-of-use"
+          href="https://blueberry-loom.netlify.app/terms-of-use/"
           target="_blank"
           rel="noopener noreferrer"
           class="theme-link-footer"
@@ -277,12 +278,12 @@
           Next.js
         </a>,
         <a
-          href="https://vuejs.org/"
+          href="https://nuxt.com/"
           target="_blank"
           rel="noopener noreferrer"
           class="theme-link-footer"
         >
-          Vue.js
+          Nuxt
         </a>,
         and&nbsp;
         <a
@@ -306,7 +307,6 @@ import CustomCheckbox from "~/components/CustomCheckbox.vue";
 import CustomRadio from "~/components/CustomRadio.vue";
 import ChronicleButton from "~/components/ChronicleButton.vue";
 
-
 interface FormRendererProps {
   schema: any;
   onSubmit: (encoded: string) => void;
@@ -320,9 +320,7 @@ interface FormRendererProps {
   onFingerprintClick?: () => void;
 }
 
-
 const props = defineProps<FormRendererProps>();
-
 
 const {
   schema,
@@ -337,19 +335,15 @@ const {
   onFingerprintClick,
 } = props;
 
-
 const emit = defineEmits<{
-  (e: 'submit', encodedResult: string): void
+  (e: "submit", encodedResult: string): void;
 }>();
-
 
 const GAP_BETWEEN_ELEMENTS = 22;
 const GAP_AFTER_TOP_TEXT = 29;
 const GAP_AFTER_TOP_TEXT_REDUCED = GAP_AFTER_TOP_TEXT - 20; // 9px
 
-
 const form = reactive<Record<string, any>>({});
-
 
 const fontSize = ref("14px");
 function getResponsiveFontSize() {
@@ -372,21 +366,21 @@ onMounted(() => {
   window.addEventListener("resize", updateFont);
 });
 
-
 const RTL_REGEX = /[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC]/;
 function isRTL(text?: string): boolean {
   return !!text && RTL_REGEX.test(text);
 }
 
-
 const titleRTL = computed(() => isRTL(schema?.meta?.title));
 const descRTL = computed(() => isRTL(schema?.meta?.description));
-
 
 function setFormValue(key: string, value: any) {
   form[key] = value;
 }
 
+function isChecked(key: string, value: string): boolean {
+  return (form[key] || []).includes(value);
+}
 
 function toggleCheckbox(key: string, value: string, element: any, checked?: boolean) {
   if (!form[key]) form[key] = [];
@@ -395,7 +389,6 @@ function toggleCheckbox(key: string, value: string, element: any, checked?: bool
   const allowMultiple = element.allowMultiple ?? false;
   const maxSelected = element.maxSelected || 0;
   const atMax = allowMultiple && maxSelected > 0 && vals.length >= maxSelected;
-
 
   if (checked !== undefined) {
     if (checked && !hasValue && (!atMax || vals.length < maxSelected)) {
@@ -415,14 +408,37 @@ function toggleCheckbox(key: string, value: string, element: any, checked?: bool
   form[key] = vals;
 }
 
-
-function isCheckboxDisabled(key: string, element: any, value: string): boolean {
+// Returns true only if checkbox unchecked AND limit reached:
+function isInactive(key: string, element: any, value: string): boolean {
   const vals = form[key] || [];
   if (!element.allowMultiple || element.maxSelected <= 0) return false;
   if (vals.includes(value)) return false;
   return vals.length >= element.maxSelected;
 }
 
+// For overlay cursor and pointer-events styling:
+function isOverlayDisabled(key: string, element: any, value: string): boolean {
+  const checked = (form[key] || []).includes(value);
+  return !checked && isInactive(key, element, value);
+}
+
+function overlayStyle(key: string, element: any, value: string): CSSProperties {
+  if (isOverlayDisabled(key, element, value)) {
+    return {
+      pointerEvents: "auto", // allow overlay to capture events, but prevent toggle via click handler
+      cursor: "not-allowed",
+    };
+  }
+  return {
+    pointerEvents: "auto",
+    cursor: "pointer",
+  };
+}
+
+function handleOverlayClick(key: string, value: string, element: any) {
+  if (isInactive(key, element, value)) return; // prevent clicks on inactive checkboxes
+  toggleCheckbox(key, value, element);
+}
 
 function toggleRadio(key: string, value: string, element: any, checked?: boolean) {
   if (checked !== undefined) {
@@ -440,18 +456,14 @@ function toggleRadio(key: string, value: string, element: any, checked?: boolean
   }
 }
 
-
 function formatHeight(h: any) {
   if (h === undefined || h === null) return undefined;
   return typeof h === "number" ? `${h}px` : h;
 }
 
-
-// Encoding utility used in your desired output
+// Encoding utility
 const encode = (str: string) => btoa(unescape(encodeURIComponent(str)));
 
-
-// Your requested 'handleSubmit' implementation:
 function handleSubmit() {
   const result = schema.sections
     .map(
@@ -462,13 +474,7 @@ function handleSubmit() {
             if (el.type === "text") return "";
             if (el.type === "input" || el.type === "textarea") {
               const val = form[el.key];
-              return (
-                "[" +
-                encode(el.text) +
-                ":" +
-                (val && val !== "" ? encode(val) : "n") +
-                "]"
-              );
+              return "[" + encode(el.text) + ":" + (val && val !== "" ? encode(val) : "n") + "]";
             }
             if (el.type === "checkboxes") {
               const vals: string[] = form[el.key] || [];
@@ -476,23 +482,13 @@ function handleSubmit() {
                 "[" +
                 encode(el.key) +
                 ":" +
-                (vals.length
-                  ? vals
-                      .map((v) => encode(v))
-                      .join(",")
-                  : "n") +
+                (vals.length ? vals.map((v) => encode(v)).join(",") : "n") +
                 "]"
               );
             }
             if (el.type === "radio") {
               const val: string | undefined = form[el.key];
-              return (
-                "[" +
-                encode(el.key) +
-                ":" +
-                (val ? encode(val) : "n") +
-                "]"
-              );
+              return "[" + encode(el.key) + ":" + (val ? encode(val) : "n") + "]";
             }
             return "";
           })
@@ -501,12 +497,9 @@ function handleSubmit() {
     )
     .join("");
 
-
   emit("submit", result);
 }
 
-
-// Spacing and bold styling for text elements:
 function getTextElementStyle(text: string, index: number, elements: any[]): CSSProperties {
   const isSingleTextSection = elements.length === 1 && elements[0].type === "text";
   const textRTL = isRTL(text);
@@ -514,11 +507,9 @@ function getTextElementStyle(text: string, index: number, elements: any[]): CSSP
   const next = elements[index + 1];
   const prev = elements[index - 1];
 
-
   const isNextNonText = next !== undefined && next.type !== "text";
   const isPrevText = prev?.type === "text";
   const isPrevNonText = prev !== undefined && prev.type !== "text";
-
 
   const style: CSSProperties = {
     color: "var(--foreground)",
@@ -527,13 +518,11 @@ function getTextElementStyle(text: string, index: number, elements: any[]): CSSP
     direction: textRTL ? ("rtl" as CSSProperties["direction"]) : ("ltr" as CSSProperties["direction"]),
   };
 
-
   if (isSingleTextSection) {
     style.fontWeight = "600";
     style.margin = "0";
     return style;
   }
-
 
   if (isFirst) {
     style.fontWeight = "600";
@@ -542,7 +531,6 @@ function getTextElementStyle(text: string, index: number, elements: any[]): CSSP
     return style;
   }
 
-
   if (isPrevText || isPrevNonText) {
     style.fontWeight = "400";
     style.marginTop = `${GAP_BETWEEN_ELEMENTS}px`;
@@ -550,21 +538,20 @@ function getTextElementStyle(text: string, index: number, elements: any[]): CSSP
     return style;
   }
 
-
   style.fontWeight = "400";
   style.margin = "0";
   return style;
 }
 
-
-function getCheckboxLabelStyle(text: string, el: any): CSSProperties {
+// Uses isInactive for label styling (opacity and cursor)
+function getCheckboxLabelStyle(text: string, el: any, value: string): CSSProperties {
   const textRTL = isRTL(text);
-  const disabled = isCheckboxDisabled(el.key, el, text);
+  const inactive = isInactive(el.key, el, value);
   return {
     fontSize: elementTextSize,
     userSelect: "none",
-    opacity: disabled ? 0.6 : 1,
-    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: inactive ? 0.6 : 1,
+    cursor: inactive ? "not-allowed" : "pointer",
     display: "flex",
     flexDirection: textRTL ? "row-reverse" : "row",
     textAlign: textRTL ? ("right" as CSSProperties["textAlign"]) : ("left" as CSSProperties["textAlign"]),
@@ -574,7 +561,6 @@ function getCheckboxLabelStyle(text: string, el: any): CSSProperties {
     alignItems: "center",
   };
 }
-
 
 function getRadioLabelStyle(text: string): CSSProperties {
   const textRTL = isRTL(text);
@@ -592,7 +578,6 @@ function getRadioLabelStyle(text: string): CSSProperties {
   };
 }
 
-
 const formStyle: CSSProperties = {
   width: "100%",
   maxHeight: "unset",
@@ -604,7 +589,6 @@ const formStyle: CSSProperties = {
   gap: cardGap,
   alignItems: "center",
 };
-
 
 const cardStyle: CSSProperties = {
   width: "100%",
@@ -619,7 +603,6 @@ const cardStyle: CSSProperties = {
   transition: "border-color 0.3s, background 0.3s, color 0.3s",
 };
 
-
 const titleStyle = computed<CSSProperties>(() => ({
   fontSize: "2rem",
   color: "var(--foreground)",
@@ -630,7 +613,6 @@ const titleStyle = computed<CSSProperties>(() => ({
   marginBottom: "0.5rem",
 }));
 
-
 const descStyle = computed<CSSProperties>(() => ({
   fontSize: "16px",
   color: "var(--muted-foreground)",
@@ -640,14 +622,12 @@ const descStyle = computed<CSSProperties>(() => ({
   margin: 0,
 }));
 
-
 const submitWrapperStyle: CSSProperties = {
   width: "100%",
   margin: 0,
   display: "flex",
   flexDirection: "column",
 };
-
 
 const footerStyle = computed<CSSProperties>(() => ({
   width: "100%",
@@ -688,8 +668,7 @@ const footerStyle = computed<CSSProperties>(() => ({
   gap: 8px;
   user-select: none;
   position: relative;
-  /* also enable keyboard focus */
-  outline-offset: 2px;
+  outline-offset: 2px; /* enables keyboard focus */
 }
 
 .clickable-label:focus-visible {
@@ -704,14 +683,29 @@ const footerStyle = computed<CSSProperties>(() => ({
   justify-content: center;
 }
 
-/* Invisible overlay on checkbox/radio + label to capture clicks and forward toggle */
+.clickable-label {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  position: relative; /* Needed so overlay covers label */
+  outline-offset: 2px; /* enables keyboard focus */
+}
+
+/* Overlay covers the entire label */
 .click-overlay {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0; bottom: 0;
+  left: 0; right: 0;
   background: transparent;
-  cursor: pointer;
   z-index: 10;
   border-radius: inherit;
-  /* Covers the entire label and checkbox/radio area */
+}
+
+/* When disabled, pointer events active but cursor shows not-allowed */
+.disabled-overlay {
+  cursor: not-allowed !important;
+  pointer-events: auto !important;
 }
 </style>

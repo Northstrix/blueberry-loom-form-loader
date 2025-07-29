@@ -40,7 +40,7 @@
               fontSize: '2rem',
               fontWeight: 'bold',
               margin: 0,
-              marginBottom: '0.7rem',
+              marginBottom: '1.125rem',
               color: 'var(--foreground)',
               textAlign: inscriptionAlign,
               direction: inscriptionDir,
@@ -64,7 +64,7 @@
               outline: 'none',
               display: 'inline-block',
               width: '100%',
-              marginBottom: '0.7rem',
+              marginBottom: '0.5rem',
               textAlign: inscriptionAlign,
               direction: inscriptionDir,
             }"
@@ -83,7 +83,7 @@
               cursor: 'pointer',
               userSelect: 'none',
               outline: 'none',
-              marginBottom: '1rem',
+              marginBottom: '0.5rem',
               textAlign: inscriptionAlign,
               direction: inscriptionDir,
             }"
